@@ -1,0 +1,61 @@
+# Template for the BABS container configuration (HCP two-pass QSIRecon wrapper).
+# 04_run_babs.sh renders qsirecon_hcp.yaml from this file by substituting the
+# placeholder tokens with values from config.sh. BABS reads the YAML literally and does
+# not expand env vars in origin_url / paths, which is why we render concrete
+# values here rather than referencing the environment.
+#
+# The wrapper (run_hcp.py, baked into the container) owns the recon design (two
+# passes, recon specs, output resolution, plugin); BABS hands it the subject label,
+# the FreeSurfer license, and the per-job nprocs/mem (kept in step with the SLURM
+# cpus/mem below so qsirecon does not oversubscribe or get OOM-killed). BABS
+# bind-mounts the license to /SGLR/FREESURFER_HOME/license.txt and passes that
+# in-container path through to the wrapper, which forwards it to QSIRecon.
+
+input_datasets:
+  BIDS:
+    origin_url: "__INPUT_DS__"
+    path_in_babs: "inputs/data"
+    is_zipped: false
+    required_files:
+      - "sub-*/T1w/Diffusion/data.nii.gz"
+
+bids_app_args:
+  $SUBJECT_SELECTION_FLAG: "--participant-label"
+  --fs-license-file: "__FS_LICENSE__"
+  --nprocs: "__CPUS__"
+  --mem: "__QSIRECON_MEM__"
+
+# One zip per subject containing the whole qsirecon/ derivatives tree:
+#   sub-<id>_qsirecon-<version>.zip  ->  qsirecon/derivatives/qsirecon-{NODDI,DIPYDKI}/...
+all_results_in_one_zip: true
+zip_foldernames:
+  __ZIP_FOLDERNAME__: "__ZIP_VERSION__"
+
+# --cleanenv: keep the host (micromamba) environment out of the container so it
+#   cannot shadow QSIRecon's own Python. --writable-tmpfs: allow stray writes.
+singularity_args:
+  - "--cleanenv"
+  - "--writable-tmpfs"
+
+# Single-node local SLURM. temporary_disk_space is intentionally omitted: the
+# node advertises TmpDisk=0, so a --tmp request would make the job unschedulable;
+# heavy work goes under job_compute_space instead.
+cluster_resources:
+  interpreting_shell: "/bin/bash"
+  number_of_cpus: "__CPUS__"
+  hard_memory_limit: "__MEM__"
+  hard_runtime_limit: "__RUNTIME_LIMIT__"
+  customized_text: |
+    #SBATCH --partition=__PARTITION__
+    #SBATCH --nodes=1
+
+# Activate the 'babs' micromamba env so datalad / git-annex / singularity are on
+# PATH inside each job (runs on the same local machine).
+script_preamble: |
+  export MAMBA_ROOT_PREFIX="${HOME}/micromamba"
+  eval "$(${HOME}/.local/bin/micromamba shell hook --shell bash)"
+  micromamba activate babs
+
+# Where each job clones the analysis dataset and runs (big '/' partition, not the
+# node's empty local /tmp).
+job_compute_space: "__JOB_COMPUTE_SPACE__"

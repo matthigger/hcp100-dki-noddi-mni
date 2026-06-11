@@ -1,0 +1,32 @@
+# QSIRecon recon-spec: NODDI scalars -> MNI152NLin2009cAsym.
+#   NDI = AMICO ICVF -> model-noddi_param-icvf   (neurite density)
+#   ODI = AMICO OD   -> model-noddi_param-od     (orientation dispersion)
+#   FW  = AMICO ISOVF-> model-noddi_param-isovf  (isotropic free-water fraction)
+#
+# RUN THIS ON THE FULL multishell DWI — NODDI (Zhang 2012; AMICO fit,
+# Daducci 2015) is a high-b model and uses every shell. Do NOT bval-filter.
+#
+# dPar=0.0017 is the white-matter in-vivo intrinsic diffusivity; template_map
+# warps to the QSIPrep standard space (MNI152NLin2009cAsym).
+name: noddi_mni
+anatomical: []
+space: T1w
+nodes:
+-   action: fit_noddi
+    input: qsirecon
+    name: fit_noddi
+    parameters:
+        dIso: 0.003
+        dPar: 0.0017
+        isExvivo: false
+    qsirecon_suffix: NODDI
+    software: AMICO
+-   action: template_map
+    input: qsirecon
+    name: template_map
+    parameters:
+        # Linear: NDI/ODI/FW are continuous scalar maps.
+        interpolation: Linear
+    scalars_from:
+    - fit_noddi
+    software: qsirecon

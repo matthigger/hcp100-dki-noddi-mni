@@ -1,0 +1,14 @@
+# This repo holds only source + config. The BABS runtime — DataLad datasets,
+# RIA stores, the .sif image, the micromamba env, logs — lives outside Dropbox
+# under ~/babs_hcp and is never committed (git-annex content must not be
+# Dropbox-synced).
+__pycache__/
+*.pyc
+*.sif
+*.log
+
+# Rendered by 04_run_babs.sh from qsirecon_hcp.yaml.tmpl; the .tmpl is the source.
+qsirecon_hcp.yaml
+
+# Rendered by 02_build_sif.sh from Apptainer.def.tmpl; the .tmpl is the source.
+Apptainer.def

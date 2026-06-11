@@ -1,0 +1,11 @@
+# nipype plugin config for the HCP (hcpya) recon passes.
+#
+# QSIRecon's hcpya ingest produces no tissue segmentation (dseg), so the
+# scalar-REPORT node (plot_scalars) crashes on dseg=None. Under the default
+# MultiProc plugin that failure deadlocks the worker pool (the workflow never
+# exits). The Linear plugin runs nodes serially with no async-callback pool, so
+# the failed (cosmetic) report node cannot wedge the run — template_map still
+# produces the MNI maps and the process exits. Per-subject recon has little
+# intra-workflow parallelism to lose, and AMICO/Dipy nodes keep their own
+# internal threads, so the throughput cost is small.
+plugin: Linear

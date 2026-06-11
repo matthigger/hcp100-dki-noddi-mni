@@ -1,0 +1,32 @@
+# QSIRecon recon-spec: DKI scalars (FA / MD / MK) -> MNI152NLin2009cAsym.
+#
+# RUN THIS ON A b<=2000-FILTERED DWI (see bval_filter.py): the dipy_dki node has
+# no shell-restriction parameter and the DKI cumulant expansion is only valid to
+# b ~ 2000-2500 s/mm^2 (Jensen & Helpern 2010).
+#
+# template_map warps to the standard space carried by the input
+# (MNI152NLin2009cAsym). Outputs: model-dki_param-{fa,md,mk}.
+name: dki_mni
+anatomical: []
+space: T1w
+nodes:
+-   action: DKI_reconstruction
+    input: qsirecon
+    name: dipy_dki
+    parameters:
+        msdki: false
+        wmti: false
+        write_fibgz: false
+        write_mif: false
+    qsirecon_suffix: DIPYDKI
+    software: Dipy
+-   action: template_map
+    input: qsirecon
+    name: template_map
+    parameters:
+        # Linear: FA/MD/MK are continuous scalar maps, so the warp into MNI
+        # interpolates (NearestNeighbor is for label/atlas volumes).
+        interpolation: Linear
+    scalars_from:
+    - dipy_dki
+    software: qsirecon

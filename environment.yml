@@ -1,0 +1,31 @@
+# Pinned 'babs' toolchain for a reproducible build. 00_install_env.sh creates the
+# env from this file (micromamba create -f environment.yml). Versions here are the
+# tested/working set; git-annex is a Haskell binary that is not pip-installable, so
+# it (and git) come from conda-forge. pip deps are pinned to the validated BABS
+# stack.
+name: babs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - git
+  # Date-based conda-forge build; tested with git-annex 10.20260525.
+  - git-annex=10.20260525
+  - p7zip
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - pyyaml>=6
+  - jinja2
+  - nibabel
+  - niworkflows
+  - tqdm
+  - regex
+  - pip:
+      - babs==0.5.4
+      - datalad==1.5.0
+      - datalad-container==1.2.6
+      - datalad-osf
+      - filelock
+      - backoff

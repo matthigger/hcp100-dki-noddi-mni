@@ -1,0 +1,32 @@
+# Thin wrapper over pennlinc/qsirecon: runs the two HCP recon passes (NODDI on
+# the full DWI, DKI on a b<=2000-filtered copy) behind a BIDS-App-shaped CLI so
+# BABS can drive it as an ordinary container.
+#
+# Source template: __QSIRECON_IMAGE__ and the Bootstrap line are filled in by
+# 02_build_sif.sh from $QSIRECON_IMAGE in config.sh (pinned by content digest for
+# reproducibility). Apptainer.def is generated from this file and git-ignored.
+# Build with 02_build_sif.sh from the repo directory (the %files sources are
+# relative to that directory).
+Bootstrap: __BOOTSTRAP__
+From: __QSIRECON_IMAGE__
+
+%files
+    run_hcp.py /opt/babs_hcp/run_hcp.py
+    bval_filter.py /opt/babs_hcp/bval_filter.py
+    maps.py /opt/babs_hcp/maps.py
+    noddi_mni.yaml /opt/babs_hcp/noddi_mni.yaml
+    dki_mni.yaml /opt/babs_hcp/dki_mni.yaml
+    linear_plugin.yml /opt/babs_hcp/linear_plugin.yml
+    # Pinned TemplateFlow (MNI152NLin2009cAsym), staged + filled in by
+    # 02_build_sif.sh, baked here so the normalization target is hermetic.
+    __TF_STAGE__ /opt/templateflow
+
+%environment
+    # Use the baked templates (NOT a host cache): runs are version-stable + offline.
+    export TEMPLATEFLOW_HOME=/opt/templateflow
+
+%runscript
+    exec python /opt/babs_hcp/run_hcp.py "$@"
+
+%labels
+    org.babs_hcp.role HCP two-pass QSIRecon (NODDI + DKI) wrapper

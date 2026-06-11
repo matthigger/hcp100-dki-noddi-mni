@@ -4,9 +4,16 @@
 # YAML is rendered from qsirecon_hcp.yaml.tmpl using these values, because BABS
 # reads the YAML literally and does not expand env vars in its paths.
 
-# Where the BABS runtime lives (DataLad datasets, RIA stores, .sif, scratch).
-# Must be OUTSIDE any Dropbox/sync folder: git-annex object stores must not sync.
-export BABS_HCP_RUNTIME="${BABS_HCP_RUNTIME:-$HOME/babs_hcp}"
+# Where the runtime lives (DataLad datasets, RIA stores, .sif, scratch): the
+# OS-standard per-user data dir, via the `platformdirs` package (in the babs env)
+# -> ~/.local/share/hcp100-dki-noddi-mni on Linux. Falls back to the XDG path if
+# platformdirs/python aren't importable yet (e.g. before the env is built). This
+# is deliberately NOT a Dropbox/sync folder: git-annex object stores must not sync.
+_hcp_runtime() {
+  python3 -c 'import platformdirs; print(platformdirs.user_data_dir("hcp100-dki-noddi-mni"))' 2>/dev/null && return
+  printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/hcp100-dki-noddi-mni"
+}
+export BABS_HCP_RUNTIME="${BABS_HCP_RUNTIME:-$(_hcp_runtime)}"
 
 # FreeSurfer license file (free, register at https://surfer.nmr.mgh.harvard.edu).
 export FS_LICENSE="${FS_LICENSE:-$HOME/Dropbox/src_etc/freesurfer_license.txt}"

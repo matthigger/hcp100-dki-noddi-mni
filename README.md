@@ -49,10 +49,11 @@ the bval filter, and exits 0 iff all six maps exist (`maps.py`). The recon specs
 ## Layout: repo here, runtime elsewhere
 
 This Dropbox-synced folder holds **only source + config**. The BABS runtime lives **outside
-Dropbox** at `~/babs_hcp/` (set `BABS_HCP_RUNTIME` in `config.sh`):
+Dropbox** at the platformdirs per-user data dir `~/.local/share/hcp100-dki-noddi-mni/`
+(resolved via `platformdirs`; `BABS_HCP_RUNTIME` in `config.sh`):
 
 ```
-~/babs_hcp/
+~/.local/share/hcp100-dki-noddi-mni/
   qsirecon-hcp.sif        the wrapper image
   qsirecon-container/     DataLad dataset wrapping the image (for `babs init`)
   input_hcp/              DataLad dataset of HCP inputs (sub-*/T1w/...) — the shareable data
@@ -80,7 +81,7 @@ sudo bash 01_fix_slurm.sh                     # repair the local single-node SLU
 bash 02_build_sif.sh                          # build the wrapper .sif + register as a DataLad container
 source ./config.sh && micromamba run -n babs python 03_build_input.py   # build the HCP input dataset
 bash 04_run_babs.sh                           # render YAML -> init -> validate 1 subj -> submit rest -> merge
-micromamba run -n babs python verify.py ~/babs_hcp/outputs   # QC: confirm 6 valid maps per subject
+micromamba run -n babs python verify.py ~/.local/share/hcp100-dki-noddi-mni/outputs   # QC: 6 valid maps/subject
 ```
 
 Each `.sh` sources `config.sh` itself; `03_build_input.py` reads the same values from the
@@ -105,11 +106,11 @@ finishes; `babs merge` consolidates them. To share or retrieve:
 
 ```bash
 # the processed results
-datalad clone "ria+file://$HOME/babs_hcp/project/output_ria#~data" my_outputs
+datalad clone "ria+file://$HOME/.local/share/hcp100-dki-noddi-mni/project/output_ria#~data" my_outputs
 cd my_outputs && datalad get sub-100307_qsirecon-26-0-0.zip
 
 # the HCP inputs (DUA applies)
-datalad clone ~/babs_hcp/input_hcp my_hcp_inputs
+datalad clone ~/.local/share/hcp100-dki-noddi-mni/input_hcp my_hcp_inputs
 ```
 
 A result zip contains `qsirecon/derivatives/qsirecon-{NODDI,DIPYDKI}/sub-<id>/dwi/*.nii.gz`.

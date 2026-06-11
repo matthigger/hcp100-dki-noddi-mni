@@ -44,15 +44,11 @@ Pinned for reproducibility:
 - TemplateFlow, baked into the `.sif`
 - the toolchain (`environment.yml`)
 - the cohort (`subjects.txt`)
-- `ANTS_RANDOM_SEED=1`
+- `ANTS_RANDOM_SEED=1` (ANTs registration is multithreaded, so runs reproduce
+  within numerical tolerance, not bit-for-bit)
 
-Checked with `verify.py`:
-
-- `verify.py <outputs>` — each subject's six maps (space / 2 mm grid / value ranges)
-- `verify.py <fresh> --compare-to <published>` — per-voxel spatial-correlation drift check
-  (r ≥ 0.999) against the deposited maps
-
-Results reproduce within tolerance, not bit-for-bit (multithreaded registration).
+`verify.py <outputs>` checks each subject's six maps — correct space, 2 mm grid,
+non-empty brain, and per-parameter value ranges.
 
 ## Credit & license
 

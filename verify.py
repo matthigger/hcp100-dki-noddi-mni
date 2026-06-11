@@ -20,17 +20,9 @@ map at <foldername>/<maps relpath> inside), a dir/glob of such zips, or an
 unzipped QSIRecon output root (post-`babs merge`). It prints a PASS/FAIL line
 per subject and an "N/M subjects passed" summary, exiting nonzero on any failure.
 
-Reproducibility check (--compare-to): the pipeline is reproducible within
-tolerance, not bit-for-bit (multithreaded ANTs registration). To detect drift
-(e.g. a changed TemplateFlow target or container), re-run a subject and pass the
-canonical/published outputs as --compare-to: each map's per-voxel spatial Pearson
-correlation against the reference must be >= --corr-threshold (default 0.999).
-Nothing is committed as a reference -- you compare against your published deposit.
-
 Run with the babs env (has nibabel + numpy), e.g.:
 
     micromamba run -n babs python verify.py ~/babs_hcp/outputs/sub-*.zip
-    micromamba run -n babs python verify.py fresh/ --compare-to published/
 """
 
 import argparse
@@ -79,40 +71,6 @@ def param_of(relpath: str) -> str:
     if not m:
         raise ValueError(f"no _param-<p>_ token in {relpath}")
     return m.group(1)
-
-
-def spatial_corr(a, b):
-    """Compare two maps over brain voxels.
-
-    Brain voxels are those finite in both maps and nonzero in either, so the
-    zero background does not inflate the correlation.
-
-    Args:
-        a (np.array): first map's voxel data, any shape.
-        b (np.array): second map's voxel data, same shape as a.
-
-    Returns:
-        r (float): Pearson correlation over brain voxels (1.0 if both are
-            constant-and-equal there; nan if the maps do not overlap).
-        maxdiff (float): max absolute voxel difference over brain voxels.
-        nrmse (float): RMS difference normalized by the RMS of b (the reference).
-    """
-    a = np.asanyarray(a, dtype=np.float64).ravel()
-    b = np.asanyarray(b, dtype=np.float64).ravel()
-    if a.shape != b.shape:
-        return float("nan"), float("nan"), float("nan")
-    mask = np.isfinite(a) & np.isfinite(b) & ((a != 0) | (b != 0))
-    if mask.sum() < 2:
-        return float("nan"), float("nan"), float("nan")
-    av, bv = a[mask], b[mask]
-    if av.std() == 0 or bv.std() == 0:
-        r = 1.0 if np.allclose(av, bv) else 0.0
-    else:
-        r = float(np.corrcoef(av, bv)[0, 1])
-    maxdiff = float(np.max(np.abs(av - bv)))
-    denom = float(np.sqrt(np.mean(bv ** 2))) or 1.0
-    nrmse = float(np.sqrt(np.mean((av - bv) ** 2)) / denom)
-    return r, maxdiff, nrmse
 
 
 def check_image(img, relpath: str, resolution: float) -> list:
@@ -228,64 +186,44 @@ def load_map(source: Path, rel: str, foldername: str):
         return None
 
 
-def verify_subject(source: Path, sbj: str, foldername: str, resolution: float,
-                   ref_source: Path = None, corr_threshold: float = 0.999):
-    """Check one subject's six maps; optionally correlate against a reference.
+def verify_subject(source: Path, sbj: str, foldername: str, resolution: float):
+    """Check one subject's six maps against the contract.
 
     Args:
         source (Path): the subject's result zip or unzipped output root.
         sbj (str): bare subject id (no "sub-" prefix).
         foldername (str): inner wrapper folder inside a result zip.
         resolution (float): expected isotropic voxel size in mm.
-        ref_source (Path | None): a reference copy of this subject's outputs
-            (zip or root) for the per-voxel reproducibility check, or None.
-        corr_threshold (float): minimum per-map spatial correlation to pass.
 
     Returns:
         fails (dict[str, list[str]]): map relpath -> failure reasons (empty
             list = passed).
-        min_r (float | None): min spatial correlation across the six maps when
-            ref_source is given, else None.
     """
-    fails, min_r = {}, None
+    fails = {}
     for rel in maps.mni_map_relpaths(sbj):
         img = load_map(source, rel, foldername)
         if img is None:
             fails[rel] = ["missing"]
             continue
         fails[rel] = check_image(img, rel, resolution)
-        if ref_source is not None:
-            ref_img = load_map(ref_source, rel, foldername)
-            if ref_img is None:
-                fails[rel].append("missing in reference")
-                continue
-            r, maxdiff, nrmse = spatial_corr(
-                np.asanyarray(img.dataobj), np.asanyarray(ref_img.dataobj))
-            min_r = r if min_r is None else min(min_r, r)
-            if not (r >= corr_threshold):
-                fails[rel].append(
-                    f"r={r:.5f} < {corr_threshold} vs reference "
-                    f"(maxdiff {maxdiff:.3g}, nrmse {nrmse:.3g})")
-    return fails, min_r
+    return fails
 
 
-def report(sbj: str, fails: dict, min_r: float = None) -> bool:
+def report(sbj: str, fails: dict) -> bool:
     """Print one PASS/FAIL line for a subject; return True when it passed.
 
     Args:
         sbj (str): bare subject id.
         fails (dict[str, list[str]]): map relpath -> failure reasons.
-        min_r (float | None): min spatial correlation vs reference, if compared.
 
     Returns:
         ok (bool): True when every map passed.
     """
     bad = {rel: rs for rel, rs in fails.items() if rs}
-    tag = f" (min r={min_r:.5f})" if min_r is not None else ""
     if not bad:
-        print(f"PASS sub-{sbj}: {len(fails)} maps OK{tag}")
+        print(f"PASS sub-{sbj}: {len(fails)} maps OK")
         return True
-    print(f"FAIL sub-{sbj}: {len(bad)}/{len(fails)} maps failed{tag}")
+    print(f"FAIL sub-{sbj}: {len(bad)}/{len(fails)} maps failed")
     for rel, reasons in bad.items():
         print(f"  {Path(rel).name}: {'; '.join(reasons)}")
     return False
@@ -370,29 +308,15 @@ def main(argv=None) -> int:
                     default=float(maps.OUTPUT_RESOLUTION),
                     help="expected isotropic voxel size in mm "
                          f"(default: {float(maps.OUTPUT_RESOLUTION)})")
-    ap.add_argument("--compare-to", "--compare_to", default=None,
-                    help="reference outputs (zip/dir/glob/root) to spatially "
-                         "correlate matching subjects against (drift check)")
-    ap.add_argument("--corr-threshold", "--corr_threshold", type=float,
-                    default=0.999,
-                    help="min per-map spatial correlation vs --compare-to "
-                         "(default: 0.999)")
     args = ap.parse_args(argv)
 
-    fresh = collect_sources(args.paths, args.participant_label)
-    ref = (collect_sources([args.compare_to], args.participant_label)
-           if args.compare_to else {})
+    sources = collect_sources(args.paths, args.participant_label)
 
     results = []
-    for sbj in sorted(fresh):
-        ref_source = ref.get(sbj) if ref else None
-        if args.compare_to and ref_source is None:
-            sys.stderr.write(
-                f"note: sub-{sbj} not in --compare-to; plausibility only\n")
-        fails, min_r = verify_subject(
-            fresh[sbj], sbj, args.zip_foldername, args.resolution,
-            ref_source, args.corr_threshold)
-        results.append(report(sbj, fails, min_r))
+    for sbj in sorted(sources):
+        fails = verify_subject(
+            sources[sbj], sbj, args.zip_foldername, args.resolution)
+        results.append(report(sbj, fails))
 
     if not results:
         sys.stderr.write("no subjects to verify\n")

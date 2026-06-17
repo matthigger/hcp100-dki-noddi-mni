@@ -50,6 +50,11 @@ Pinned for reproducibility:
 `verify.py <outputs>` checks each subject's six maps — correct space, 2 mm grid,
 non-empty brain, and per-parameter value ranges.
 
+`05_brain_mask.py <outputs>` writes one cohort brain mask: the voxels with a
+finite, nonzero DKI FA value in *every* subject (the intersection of nonzero-FA
+support). It is a property of the whole cohort, so it cannot be recomputed from a
+partial download.
+
 ## Credit & license
 
 Built on:

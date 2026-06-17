@@ -1,8 +1,5 @@
 # hcp100-dki-noddi-mni
 
-[![Software DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20645824.svg)](https://doi.org/10.5281/zenodo.20645824)
-[![Data DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20645613.svg)](https://doi.org/10.5281/zenodo.20645613)
-
 Reproducible pipeline that produces **DKI + NODDI diffusion-microstructure maps** for the
 **100 unrelated HCP-YA (S1200)** subjects in **MNI152NLin2009cAsym at 2 mm**, by running
 [QSIRecon](https://github.com/PennLINC/qsirecon) through
@@ -13,8 +10,8 @@ Reproducible pipeline that produces **DKI + NODDI diffusion-microstructure maps*
 
 Deposited artifacts:
 
-- **Maps (data):** https://zenodo.org/records/20645614
-- **Pipeline (this repo, archived):** https://zenodo.org/records/20645825
+- **Pipeline (this repo, archived):** [![Software DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20645824-blue)](https://doi.org/10.5281/zenodo.20645824)
+- **Maps (data):** [![Data DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20645613-blue)](https://doi.org/10.5281/zenodo.20645613)
 
 ## How it works
 
